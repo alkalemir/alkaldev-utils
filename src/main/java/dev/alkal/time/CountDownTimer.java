@@ -22,20 +22,29 @@ public abstract class CountDownTimer {
     scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
   }
 
+  protected void onStart() {}
   protected abstract void onTick(long remainingInMillis);
   protected abstract void onFinish();
 
   public final void start() {
-    AtomicLong passedTime = new AtomicLong();
+    AtomicLong passedTime = new AtomicLong(interval);
+    onStart();
     scheduledExecutorService.scheduleAtFixedRate(() -> {
-      if (passedTime.get() <= totalTime) {
+      if (passedTime.get() < totalTime) {
         onTick(totalTime - passedTime.get());
         passedTime.getAndAdd(interval);
-      } else {
-        onFinish();
-        scheduledExecutorService.shutdown();
+
+        if (passedTime.get() >= totalTime) {
+          try {
+            Thread.sleep(totalTime - (passedTime.get() - interval));
+          } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+          }
+          onFinish();
+          scheduledExecutorService.shutdown();
+        }
       }
-    }, 0, interval, TimeUnit.MILLISECONDS);
+    }, interval, interval, TimeUnit.MILLISECONDS);
   }
 
   public final void cancel() {
